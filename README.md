@@ -4,7 +4,7 @@ Attempt to build Invidious for arm (Raspberry PI)
 # Current issues:
 
 - Missing symbol errors when running invidious:arm
-<code>
+```
 ...
 invidious_1  | Error relocating /invidious/invidious: _ZNSaIcED1Ev: symbol not found
 invidious_1  | Error relocating /invidious/invidious: yaml_document_end_event_initialize: symbol not found
@@ -46,8 +46,7 @@ invidious_1  | Error relocating /invidious/invidious: _ZN4llvm9DIBuilder18create
 invidious_1  | Error relocating /invidious/invidious: _ZN4llvm16MetadataTracking7retrackEPvRNS_8MetadataES1_: symbol not found
 invidious_1  | Error relocating /invidious/invidious: sqlite3_bind_null: symbol not found
 invidious_1  | Error relocating /invidious/invidious: GC_stackbottom: symbol not found
-....
-</code>
+```
 # Building:
 ## Build lsquic for arm
 sudo docker buildx build -t invidious:lsquicBuilder --platform linux/arm/v7 -f Dockerfile_lsquicBuilder .
