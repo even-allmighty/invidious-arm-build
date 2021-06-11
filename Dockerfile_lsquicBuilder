@@ -1,0 +1,33 @@
+# lsquic 2.18 does not build on alpine 3.13 (the version crystallang/crystal:1.0.0-alpine is build on -> https://github.com/crystal-lang/distribution-scripts/blob/master/docker/alpine.Dockerfile)
+FROM docker.io/library/alpine:3.12
+
+RUN apk add --no-cache wget g++ cmake git go perl ninja bsd-compat-headers make zlib-static zlib-dev libevent-dev
+
+RUN wget -O boringssl.zip https://github.com/google/boringssl/archive/251b5169fd44345f455438312ec4e18ae07fd58c.zip \
+    && unzip boringssl.zip \
+    && cd boringssl-251b5169fd44345f455438312ec4e18ae07fd58c \
+    && cmake -DCMAKE_BUILD_TYPE=Release -GNinja . \
+    && ninja
+    
+RUN wget https://github.com/litespeedtech/lsquic/tarball/v2.18.1 -O - | tar xfz -
+
+RUN mkdir -p litespeedtech-lsquic-692a910/src/liblsquic/ls-qpack \
+    && wget https://github.com/litespeedtech/ls-qpack/tarball/a8ae6ef90197df0620ffd51891fb16016b1bb807 -O - | tar xfz - --strip-components=1 -C litespeedtech-lsquic-692a910/src/liblsquic/ls-qpack
+
+RUN mkdir -p litespeedtech-lsquic-692a910/src/lshpack \
+    && wget https://github.com/litespeedtech/ls-hpack/tarball/bd5d58987e0e88d7c1b676f83624528926fb423a -O - | tar xfz - --strip-components=1 -C litespeedtech-lsquic-692a910/src/lshpack
+
+RUN cd litespeedtech-lsquic-692a910 \
+    && cmake -DBORINGSSL_DIR=../boringssl-251b5169fd44345f455438312ec4e18ae07fd58c . \
+    #&& cat Makefile && false\
+    && make -j$(nproc) lsquic
+
+RUN mkdir dist \
+    && cd dist \
+    && ar -x ../litespeedtech-lsquic-692a910/src/liblsquic/liblsquic.a \
+    && ar -x ../boringssl-251b5169fd44345f455438312ec4e18ae07fd58c/ssl/libssl.a \
+    && ar -x ../boringssl-251b5169fd44345f455438312ec4e18ae07fd58c/crypto/libcrypto.a \
+    && ar rc liblsquic.a *.o \
+    && rm *.o \
+    && strip --strip-unneeded liblsquic.a \
+    && ranlib liblsquic.a

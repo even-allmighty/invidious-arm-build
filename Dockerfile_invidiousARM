@@ -1,0 +1,31 @@
+FROM alpine:3.13 as invidious_src
+
+RUN apk add --no-cache git
+
+RUN git clone https://github.com/iv-org/invidious.git
+
+FROM alpine:3.13
+
+RUN apk add --no-cache librsvg ttf-opensans 
+
+WORKDIR /invidious
+
+RUN addgroup -g 1000 -S invidious && \
+    adduser -u 1000 -S invidious -G invidious
+
+COPY --from=invidious_src /invidious/assets/ ./assets/
+COPY --chown=invidious --from=invidious_src /invidious/config/config.* ./config/
+
+RUN mv -n config/config.example.yml config/config.yml
+
+RUN sed -i 's/host: \(127.0.0.1\|localhost\)/host: postgres/' config/config.yml
+
+COPY --from=invidious_src /invidious/config/sql/ ./config/sql/
+COPY --from=invidious_src /invidious/locales/ ./locales/
+COPY --from=invidious:link /root/invidious .
+
+RUN chmod o+rX -R ./assets ./config ./locales
+
+EXPOSE 3000
+USER invidious
+CMD [ "/invidious/invidious" ]

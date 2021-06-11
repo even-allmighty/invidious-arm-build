@@ -1,0 +1,32 @@
+FROM alpine:3.13
+
+RUN apk add --no-cache make llvm-dev llvm g++ git libevent-dev \
+    gc-dev pcre-dev zlib-static zlib-dev libxml2 libxml2-dev \
+    libssl1.1 openssl-dev sqlite-static sqlite-dev yaml-static yaml-dev
+
+WORKDIR /root
+
+RUN git clone https://github.com/crystal-lang/crystal 
+
+RUN cd crystal && git checkout 1.0.0 && make deps
+
+RUN mkdir -p /usr/share/crystal /usr/lib/crystal/bin 
+
+RUN cp -R /root/crystal/src /usr/share/crystal/src
+
+COPY --from=invidious:compile /invidious/invidious.o /root/invidious.o
+COPY --from=invidious:lsquicBuilder /dist/liblsquic.a /root/liblsquic.a
+
+RUN LD_DEBUG=all cc 'invidious.o' -o 'invidious' -rdynamic \
+    /root/crystal/src/llvm/ext/llvm_ext.o \
+    /root/crystal/src/ext/libcrystal.a \
+    `/usr/lib/llvm10/bin/llvm-config --libs --system-libs --ldflags 2> /dev/null` \
+    -lstdc++ \
+    -lgc \
+    -levent \
+    -lpcre \
+    -lxml2 -lz \
+    -lyaml \
+    -lsqlite3 \
+    /root/liblsquic.a \
+    -L/usr/lib -L/usr/local/lib
