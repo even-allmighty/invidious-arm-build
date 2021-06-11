@@ -1,8 +1,8 @@
 FROM alpine:3.13
 
-RUN apk add --no-cache make llvm-dev llvm g++ git libevent-dev \
+RUN apk add --no-cache make llvm-dev llvm g++ git \
     gc-dev pcre-dev zlib-static zlib-dev libxml2 libxml2-dev \
-    libssl1.1 openssl-dev sqlite-static sqlite-dev yaml-static yaml-dev
+    libssl1.1 sqlite-static yaml-static openssl-libs-static libevent-static
 
 WORKDIR /root
 
@@ -17,16 +17,18 @@ RUN cp -R /root/crystal/src /usr/share/crystal/src
 COPY --from=invidious:compile /invidious/invidious.o /root/invidious.o
 COPY --from=invidious:lsquicBuilder /dist/liblsquic.a /root/liblsquic.a
 
-RUN LD_DEBUG=all cc 'invidious.o' -o 'invidious' -rdynamic \
-    /root/crystal/src/llvm/ext/llvm_ext.o \
-    /root/crystal/src/ext/libcrystal.a \
-    `/usr/lib/llvm10/bin/llvm-config --libs --system-libs --ldflags 2> /dev/null` \
-    -lstdc++ \
-    -lgc \
-    -levent \
-    -lpcre \
-    -lxml2 -lz \
-    -lyaml \
-    -lsqlite3 \
+RUN cc invidious.o -o invidious \
+    -lxml2 -llzma -rdynamic -static \
+    #-L/usr/bin/../lib/crystal/lib\
+    -L/usr/share/crystal/src/lib \
+    #/invidious/lib/lsquic/src/lsquic/ext/liblsquic.a \
     /root/liblsquic.a \
+    -lyaml  -lxml2 -L/lib -lz -llzma -lm  -lsqlite3 -lz \
+    -lssl -lcrypto \
+    #`command -v pkg-config > /dev/null && pkg-config --libs --silence-errors libssl || printf %s '-lssl -lcrypto'` \
+    #`command -v pkg-config > /dev/null && pkg-config --libs --silence-errors libcrypto || printf %s '-lcrypto'` \
+    -lpcre -lm -lgc -lpthread \
+    #/usr/share/crystal/src/ext/libcrystal.a \
+    /root/crystal/src/ext/libcrystal.a \
+    -levent -lrt -ldl \
     -L/usr/lib -L/usr/local/lib
